@@ -29,7 +29,8 @@ def hello() -> str:
     return "Hello World!"
 
 @app.route("/test")
-def test() ->:
+def test() ->str:
+    
     return 'Test endpoint'
 
 if __name__ == "__main__":
