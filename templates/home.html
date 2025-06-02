@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Two Spider Charts + UID</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        #charts-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .chart {
+            width: 45%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Select Options and UID</h1>
+
+    <!-- Dropdown for chart 1 -->
+    <div>
+        <label for="dropdown1">Select ...:</label>
+        <select id="dropdown1"></select>
+    </div>
+
+    <!-- Dropdown for chart 1 -->
+    <div>
+        <label for="dropdownTime">Select Time:</label>
+        <select id="dropdownTime"></select>
+    </div>
+
+    <!-- Dropdown for chart 2 -->
+    <div>
+        <label for="dropdownEXE">Select Exe type:</label>
+        <select id="dropdownEXE"></select>
+    </div>
+
+    <!-- 3rd Dropdown for UID -->
+    <div>
+        <label for="dropdownUID">Select UID:</label>
+        <select id="dropdownUID"></select>
+    </div>
+
+    <!-- Chart divs -->
+    <div id="charts-container">
+        <div id="chart1" class="chart"></div>
+    </div>
+
+    <script>
+const dropdown1 = document.getElementById("dropdown1");
+const dropdownTime = document.getElementById("dropdownTime");
+const dropdownEXE = document.getElementById("dropdownEXE");
+const dropdownUID = document.getElementById("dropdownUID");
+
+// Function to fetch data and update charts
+function updateCharts() {
+  const option1 = dropdown1.value;
+  const Time = dropdownTime.value;
+  const exeType = dropdownEXE.value;
+  const uid = dropdownUID.value; // Get the selected UID
+
+  // Build the query string dynamically
+  const queryString = `?option1=${encodeURIComponent(option1)}&optionTime=${encodeURIComponent(Time)}&EXE=${encodeURIComponent(exeType)}&uid=${encodeURIComponent(uid)}`;
+
+  // Fetch data with the selected options
+  fetch("/get_chart_data" + queryString)
+    .then(resp => resp.json())
+    .then(data => {
+      // Update the spider charts
+      Plotly.newPlot("chart1", data.chart1.traces, data.chart1.layout);
+      Plotly.newPlot("chart2", data.chart2.traces, data.chart2.layout);
+    })
+    .catch(err => console.error(err));
+}
+
+// Initial population of dropdowns and charts
+fetch("/get_chart_data?option1=Option+1&option2=Option+2&time=9%20Month")
+  .then(resp => resp.json())
+  .then(data => {
+    // Populate dropdown1
+    data.options.forEach(opt => {
+      const optionEl1 = document.createElement("option");
+      optionEl1.value = opt;
+      optionEl1.textContent = opt;
+      dropdown1.appendChild(optionEl1);
+    });
+
+    // Populate dropdown2 with timePoints
+    data.timePoints.forEach(timePoint => {
+      const optionEl2 = document.createElement("option");
+      optionEl2.value = timePoint;
+      optionEl2.textContent = timePoint;
+      dropdownTime.appendChild(optionEl2); 
+    });
+
+    // Populate EXE dropdown
+    data.exe_type.forEach(exe => {
+      const optionEXE = document.createElement("option");
+      optionEXE.value = exe;
+      optionEXE.textContent = exe;
+      dropdownEXE.appendChild(optionEXE);
+    });
+
+    // Populate UID dropdown
+    data.UID_list.forEach(uid => {
+      const optionUID = document.createElement("option");
+      optionUID.value = uid;
+      optionUID.textContent = uid;
+      dropdownUID.appendChild(optionUID);
+    });
+
+    // Set default values for dropdowns
+    dropdown1.value = "Option 1";
+    dropdownTime.value = "6 Month"; // Default to the first timePoint
+    dropdownEXE.value = "unilateral_squat";
+    dropdownUID.value = data.UID_list[0];
+
+    // Render the initial charts
+    updateCharts();
+  })
+  .catch(err => console.error(err));
+
+// Add event listeners to update charts when dropdowns change
+dropdown1.addEventListener("change", updateCharts);
+dropdownTime.addEventListener("change", updateCharts);
+dropdownEXE.addEventListener("change", updateCharts);
+dropdownUID.addEventListener("change", updateCharts);
+</script>
+</body>
+</html>
