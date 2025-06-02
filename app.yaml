@@ -22,3 +22,4 @@ automatic_scaling:    # Standard supports automatic_scaling
 
 env_variables:
   MY_ENV_VAR: "value"
+
