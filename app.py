@@ -26,7 +26,7 @@ def hello() -> str:
     Returns:
         A string with the words 'Hello World!'.
     """
-    return "Hello Flask! Trigger test"
+    return "Hello Flask! Trigger test 2"
 
 @app.route("/test")
 def test() ->str:
