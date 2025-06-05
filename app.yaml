@@ -20,9 +20,15 @@ env: flex
 env_variables:
   MY_ENV_VAR: "value"
 
-# App Engine flexible health check
-health_check:
-  enable_health_check: true
+# Add split health checks for flexible environment
+liveness_check:
+  path: "/health"
   check_interval_sec: 30
   timeout_sec: 5
-  unhealthy_threshold: 3
+  failure_threshold: 3
+
+readiness_check:
+  path: "/ready"
+  check_interval_sec: 30
+  timeout_sec: 5
+  failure_threshold: 3
