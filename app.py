@@ -5,6 +5,10 @@ import os
 import json
 from functools import wraps
 
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+
 #---------------------------- constants -------------------------------
 unilateral_squat_test_all = ( ['summary__unilateral_squat__mobility__ankle__left',
                           'summary__unilateral_squat__mobility__ankle__right'],
@@ -114,13 +118,12 @@ time_points = ['3 Month','6 Month','9 Month','12 Month']
 if 'test' in uid_list:
     uid_list.remove('test')  # Remove 'test' if it exists
 
+""" client_secret_path = os.path.join(script_dir, 'client_secret_564818052534-f8f29ltrvhh7kmcn7i7omadbrd4cg3e0.apps.googleusercontent.com.json')
+with open(client_secret_path, 'r') as f:
+  client_secret_data = json.load(f)
 
-# client_id = client_secret_data['web']['client_id']
-# client_secret = client_secret_data['web']['client_secret']
-
-
-client_id = os.getenv("GOOGLE_CLIENT_ID")
-client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_CLIENT_ID = client_secret_data['web']['client_id']
+GOOGLE_CLIENT_SECRET = client_secret_data['web']['client_secret'] """
 
 
 app = Flask(__name__)
@@ -132,8 +135,8 @@ app.secret_key = 'your_secret_key'  # Set a unique and secret key for session ma
 oauth = OAuth(app)
 google = oauth.register(
      name='google',
-     client_id=client_id,
-     client_secret=client_secret,
+     client_id=GOOGLE_CLIENT_ID,
+     client_secret=GOOGLE_CLIENT_SECRET,
      server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
      api_base_url='https://openidconnect.googleapis.com/v1/',
      client_kwargs={'scope': 'openid email profile'},
@@ -474,9 +477,9 @@ def login():
 
 # Define which Google accounts are allowed to log in
 ALLOWED_USERS = {
-    'user1@example.com',
-    'user2@example.com',
-
+    'krivolapov.maksim@gmail.com',
+    'mkrivolapov@darimotion.com',
+    # add more authorized emails here
 }
 
 @app.route('/login/callback')
@@ -501,7 +504,7 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
 
 #print("Looking for:", pkl_path)
 #print("Exists:", os.path.exists(pkl_path))
