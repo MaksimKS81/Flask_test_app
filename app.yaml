@@ -17,10 +17,6 @@ env: flex
 
 # Dockerfile will handle build and start
 
-automatic_scaling:    # Standard supports automatic_scaling
-  min_instances: 0
-  max_instances: 2
-
 env_variables:
   MY_ENV_VAR: "value"
 
