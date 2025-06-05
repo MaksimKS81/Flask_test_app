@@ -529,9 +529,12 @@ def health_check():
 
 @app.route('/ready')
 def readiness_check():
-    # Simple check: ensure data loaded
-    if 'df' in globals() and not df.empty:
-        return 'READY', 200
+    # Simple check: ensure data loaded into df_test
+    try:
+        if not df_test.empty:
+            return 'READY', 200
+    except NameError:
+        pass
     return 'NOT READY', 503
 
 # Error handlers

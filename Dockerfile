@@ -25,6 +25,9 @@ COPY . /app/
 # Expose port (Cloud Run sets $PORT automatically)
 EXPOSE 8080
 
+# Healthcheck so GCP knows when container is ready
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s CMD curl --fail http://localhost:8080/health || exit 1
+
 # Default to use gunicorn with Flask app
 CMD ["gunicorn", "--preload", "--timeout", "120", "-b", ":8080", "app:app"]
 
