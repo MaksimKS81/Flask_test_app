@@ -1,13 +1,21 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session
 from authlib.integrations.flask_client import OAuth
+from dotenv import load_dotenv  # load local .env in development
+load_dotenv()
 import pandas as pd
 import os
 import json
 from functools import wraps
+from flask import jsonify, abort
 
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("Missing SECRET_KEY: set SECRET_KEY in .env file")
+
+
 
 #---------------------------- constants -------------------------------
 unilateral_squat_test_all = ( ['summary__unilateral_squat__mobility__ankle__left',
@@ -106,7 +114,14 @@ def login_required(f):
 
 script_dir = os.path.dirname(__file__)
 pkl_path = os.path.join(script_dir, 'all_my_data.pkl')
-df_test = pd.read_pickle(pkl_path)
+
+try:
+    df_test = pd.read_pickle(pkl_path)
+    print(f"Loaded {pkl_path}")
+except Exception as e:
+    print(f"Failed to load {pkl_path}: {e}")
+    df_test = pd.DataFrame()  # fallback empty df
+
 
 uid_counts = df_test['uid'].value_counts().reset_index()
 uid_counts.columns = ['uid', 'count']
@@ -404,6 +419,9 @@ def home():
     else:
         return '<a href="/login">Login with Google</a>'
 
+# In-memory cache for chart data
+chart_cache = {}
+
 @app.route("/get_chart_data", methods=["GET"])
 @login_required
 def get_chart_data():
@@ -455,17 +473,21 @@ def get_chart_data():
         temp_ch_list = front_lunge_all
 
 
-    chart_data1 = func_plot(uid, time_v, temp_ch_list, exe_type, width=1000, height=1000)
-    chart_data2 = func_plot(uid, time_v, temp_ch_list, exe_type, width=1000, height=1000)
+    cache_key = (uid, time_v, exe_type)
+    if cache_key in chart_cache:
+        chart_data = chart_cache[cache_key]
+    else:
+        chart_data = func_plot(uid, time_v, temp_ch_list, exe_type, width=1000, height=1000)
+        chart_cache[cache_key] = chart_data
 
-    # Return chart_data1 and chart_data2 for the frontend's Plotly calls
+    # Return cached results for both charts
     return jsonify({
-        "chart1": chart_data1,
-        "chart2": chart_data2,
-        "options": list(all_options.keys()),  # e.g. so you can fill dropdowns
+        "chart1": chart_data,
+        "chart2": chart_data,
+        "options": list(all_options.keys()),
         "timePoints": time_points,
         "exe_type": ["unilateral_squat", "bilateral_squat", "lateral_launch_all", "stork_stance_all", "step_down_all", "front_lunge_all"],
-        "UID_list": list(range(len(uid_list)))  # Use indices instead of real UID values
+        "UID_list": list(range(len(uid_list)))
     })
 
 @app.route('/login')
@@ -501,7 +523,25 @@ def logout():
     session.pop('email', None)
     return redirect('/')
 
+@app.route('/health')
+def health_check():
+    return 'OK', 200
 
+@app.route('/ready')
+def readiness_check():
+    # Simple check: ensure data loaded
+    if 'df' in globals() and not df.empty:
+        return 'READY', 200
+    return 'NOT READY', 503
+
+# Error handlers
+@app.errorhandler(401)
+def unauthorized_error(e):
+    return jsonify(error='Unauthorized access'), 401
+
+@app.errorhandler(400)
+def bad_request_error(e):
+    return jsonify(error='Bad request'), 400
 
 if __name__ == "__main__":
     app.run(debug=False)

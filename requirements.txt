@@ -1,5 +1,6 @@
-flask
-numpy
-pandas
+Flask==2.3.3
+Authlib==1.2.1
+gunicorn==21.2.0
+pandas==2.2.2
 python-dotenv
-authlib
+requests
