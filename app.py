@@ -274,9 +274,10 @@ def func_plot(uid,
             else:
                 norm.append((v - lo) / (hi - lo))
         normed_data_uid[label] = norm
-        #print(single_uid)
-    #-----------------------------------------------------------------------------
-    
+    # close the loop for each UID trace so the radar line connects back
+    for label in normed_data_uid:
+        normed_data_uid[label].append(normed_data_uid[label][0])
+
     categories = [k for k in all_info]
     
     #ranges = range
