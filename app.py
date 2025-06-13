@@ -502,7 +502,9 @@ def login():
 ALLOWED_USERS = {
     'krivolapov.maksim@gmail.com',
     'mkrivolapov@darimotion.com',
-    # add more authorized emails here
+    'Snaggs100@gmail.com',
+    'mchronert@darimotion.com',
+    'dwassom@darimotion.com'
 }
 
 @app.route('/login/callback')
