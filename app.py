@@ -162,8 +162,8 @@ def func_plot(uid,
                 temp_ch_list,
                 type_of_test = 'unilateral_squat', 
                 ch_type = 'mobility',
-                width=600, 
-                height=600):
+                width=500, 
+                height=500):
 #-------- data preprocessing ----------------    
 
     global uid_list
@@ -478,7 +478,7 @@ def get_chart_data():
     if cache_key in chart_cache:
         chart_data = chart_cache[cache_key]
     else:
-        chart_data = func_plot(uid, time_v, temp_ch_list, exe_type, width=1000, height=1000)
+        chart_data = func_plot(uid, time_v, temp_ch_list, exe_type, width=800, height=800)
         chart_cache[cache_key] = chart_data
 
     # Return cached results for both charts
