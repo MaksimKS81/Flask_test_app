@@ -12,23 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-runtime: custom
-env: flex
+runtime: python310
 
-# Dockerfile will handle build and start
+entrypoint: gunicorn -b :$PORT app:app
+
+automatic_scaling:    # Standard supports automatic_scaling
+  min_instances: 0
+  max_instances: 2
 
 env_variables:
   MY_ENV_VAR: "value"
 
-# Add split health checks for flexible environment
-liveness_check:
-  path: "/health"
-  check_interval_sec: 30
-  timeout_sec: 5
-  failure_threshold: 3
-
-readiness_check:
-  path: "/ready"
-  check_interval_sec: 30
-  timeout_sec: 5
-  failure_threshold: 3

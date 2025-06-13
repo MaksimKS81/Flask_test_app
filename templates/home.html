@@ -2,9 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Two Spider Charts + UID</title>
+    <title>Home</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
+        /* Container for main content + sidebar */
+        .container {
+          display: flex;
+        }
+        /* Main chart area */
+        .main-content {
+          flex: 1;
+          padding: 20px;
+        }
+        /* Sidebar info box */
+        .info-box {
+          width: 300px;
+          margin: 20px;
+          border: 1px solid #ccc;
+          display: flex;
+          flex-direction: column;
+        }
+        .info-header {
+          background-color: #4CAF50;   /* green */
+          color: white;
+          padding: 10px;
+          font-weight: bold;
+        }
+        .info-body {
+          flex: 1;
+          padding: 10px;
+        }
+        .info-footer {
+          background-color: #f44336;   /* red */
+          color: white;
+          padding: 10px;
+          text-align: center;
+        }
+
         #charts-container {
             display: flex;
             justify-content: space-between;
@@ -15,38 +49,55 @@
     </style>
 </head>
 <body>
-    <h1>Select Options and UID</h1>
+  <div class="container">
+    <div class="main-content">
+      <h1>Prototype system for visual tracking of rehabilitation progress after ACL reconstruction surgery.</h1>
 
-    <!-- Dropdown for chart 1 -->
-    <div>
-        <label for="dropdown1">Select ...:</label>
-        <select id="dropdown1"></select>
+      <!-- Dropdown for chart 1 -->
+      <div>
+          <label for="dropdown1">Select ...:</label>
+          <select id="dropdown1"></select>
+      </div>
+
+      <!-- Dropdown for chart 1 -->
+      <div>
+          <label for="dropdownTime">Select Time:</label>
+          <select id="dropdownTime"></select>
+      </div>
+
+      <!-- Dropdown for chart 2 -->
+      <div>
+          <label for="dropdownEXE">Select Exe type:</label>
+          <select id="dropdownEXE"></select>
+      </div>
+
+      <!-- 3rd Dropdown for UID -->
+      <div>
+          <label for="dropdownUID">Select UID:</label>
+          <select id="dropdownUID"></select>
+      </div>
+
+      <!-- Chart divs -->
+      <div id="charts-container">
+          <div id="chart1" class="chart"></div>
+      </div>
     </div>
 
-    <!-- Dropdown for chart 1 -->
-    <div>
-        <label for="dropdownTime">Select Time:</label>
-        <select id="dropdownTime"></select>
+    <div class="info-box">
+      <div class="info-header">Description</div>
+      <div class="info-body">
+        <p>
+          This dashboard shows mobility and alignment metrics over time.
+          Select a test type and time point to update the charts.
+        </p>
+      </div>
+      <div class="info-footer">
+          Need help? <a href="mailto:mkrivolapov@darimotion.com">Contact support</a>
+      </div>
     </div>
+  </div>
 
-    <!-- Dropdown for chart 2 -->
-    <div>
-        <label for="dropdownEXE">Select Exe type:</label>
-        <select id="dropdownEXE"></select>
-    </div>
-
-    <!-- 3rd Dropdown for UID -->
-    <div>
-        <label for="dropdownUID">Select UID:</label>
-        <select id="dropdownUID"></select>
-    </div>
-
-    <!-- Chart divs -->
-    <div id="charts-container">
-        <div id="chart1" class="chart"></div>
-    </div>
-
-    <script>
+  <script>
 const dropdown1 = document.getElementById("dropdown1");
 const dropdownTime = document.getElementById("dropdownTime");
 const dropdownEXE = document.getElementById("dropdownEXE");
