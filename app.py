@@ -316,12 +316,12 @@ def func_plot(uid,
         # Text annotations are actual values
         text_vals = [str(v) for v in single_uid[label]] + [str(single_uid[label][0])]
         trace = {
-                "type": "scatterpolar",
-                "r": norm_vals,
-                "theta": theta,
-                "name": str(uid) + ' ' + label,
-                "text": text_vals,
-                "textposition": "top center"
+            "type": "scatterpolar",
+            "r": norm_vals,
+            "theta": theta,
+            "name": f"Test subject #{uid_list.index(uid)} {label}, side",
+            "text": text_vals,
+            "textposition": "top center"
         }
         traces.append(trace)   
     # for i, values in enumerate(values_list):
