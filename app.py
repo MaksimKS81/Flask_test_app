@@ -503,7 +503,7 @@ def login():
 ALLOWED_USERS = {
     'krivolapov.maksim@gmail.com',
     'mkrivolapov@darimotion.com',
-    'Snaggs100@gmail.com',
+    'snaggs100@gmail.com',
     'mchronert@darimotion.com',
     'dwassom@darimotion.com'
 }
