@@ -157,13 +157,14 @@ google = oauth.register(
      client_kwargs={'scope': 'openid email profile'},
 )
 
-def func_plot(uid, 
-                time_v, 
+def func_plot(uid,
+                time_subject, 
+                time_cohort, 
                 temp_ch_list,
                 type_of_test = 'unilateral_squat', 
                 ch_type = 'mobility',
-                width=500, 
-                height=500):
+                width=600, 
+                height=600):
 #-------- data preprocessing ----------------    
 
     global uid_list
@@ -189,7 +190,7 @@ def func_plot(uid,
     
            
         y_temp_spider = df_test[[time, *i, injure]]
-        y_temp = y_temp_spider[y_temp_spider[time] == time_v]
+        y_temp = y_temp_spider[y_temp_spider[time] == time_cohort]
         
         good_values = y_temp[y_temp[injure] == 'Left'][i[1]].values.tolist() + y_temp[y_temp[injure] == 'Right'][i[0]].values.tolist()
         good_values_ps = pd.Series(good_values)
@@ -237,7 +238,7 @@ def func_plot(uid,
     single_uid = {'Right':[], 'Left':[] }
     for ch in temp_ch_list:
         y_temp_spider = df_test[[time, *ch, injure, 'uid']]
-        y_temp = y_temp_spider[y_temp_spider[time] == time_v]
+        y_temp = y_temp_spider[y_temp_spider[time] == time_subject]
         
         # Debugging output to log the state of variables
 #        print("Processing channel:", ch)
@@ -316,12 +317,12 @@ def func_plot(uid,
         # Text annotations are actual values
         text_vals = [str(v) for v in single_uid[label]] + [str(single_uid[label][0])]
         trace = {
-            "type": "scatterpolar",
-            "r": norm_vals,
-            "theta": theta,
-            "name": f"Test subject #{uid_list.index(uid)} {label}, side",
-            "text": text_vals,
-            "textposition": "top center"
+                "type": "scatterpolar",
+                "r": norm_vals,
+                "theta": theta,
+                "name": f"Test subject #{uid_list.index(uid)} {label}, side",
+                "text": text_vals,
+                "textposition": "top center"
         }
         traces.append(trace)   
     # for i, values in enumerate(values_list):
@@ -408,7 +409,7 @@ def func_plot(uid,
         "height": height,
         "showlegend": True,
         "showticklabels": False,
-        "title": f"{ch_type} results, {type_of_test}, {time_v}, Injured side: {uid_inj} "
+        "title": f"Exe. type: {type_of_test}, subject: {time_subject}, cohort: {time_cohort}, Injured side: {uid_inj}"
     }
     return {"traces": traces, "layout": layout}
 
@@ -421,7 +422,7 @@ def home():
         return '<a href="/login">Login with Google</a>'
 
 # In-memory cache for chart data
-chart_cache = {}
+chart_cache= {}
 
 @app.route("/get_chart_data", methods=["GET"])
 @login_required
@@ -431,9 +432,9 @@ def get_chart_data():
     global time_points
     global unilateral_squat_test_all 
  
-    option1 = request.args.get("option1", "Option 1")
-    time_v = request.args.get("optionTime", "9 Month")
-    # uid = request.args.get("uid", uid_list[0])  
+    time_cohort = request.args.get("dropdownTimeCohort", "9 Month")
+    time_subject = request.args.get("optionTime", "9 Month")
+    # uid = request.args.get("uid", uid_list[0])
     # interpret uid param as index into uid_list
     idx_str = request.args.get("uid", "0")
     try:
@@ -446,8 +447,8 @@ def get_chart_data():
 
 
     print("UID:", uid)
-    print("Time Point:", time_v)
-
+    print("Time, subject:", time_subject)
+    print("Time, cohort:", time_cohort)
 
     categories = ["Category A", "Category B", "Category C", "Category D", "Category E"]
     all_options = {
@@ -474,18 +475,18 @@ def get_chart_data():
         temp_ch_list = front_lunge_all
 
 
-    cache_key = (uid, time_v, exe_type)
+    cache_key = (uid, time_subject, time_cohort, exe_type)
     if cache_key in chart_cache:
         chart_data = chart_cache[cache_key]
     else:
-        chart_data = func_plot(uid, time_v, temp_ch_list, exe_type, width=800, height=800)
+        chart_data = func_plot(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=800, height=800)
         chart_cache[cache_key] = chart_data
 
     # Return cached results for both charts
     return jsonify({
         "chart1": chart_data,
         "chart2": chart_data,
-        "options": list(all_options.keys()),
+        "options": time_points, #list(all_options.keys()),
         "timePoints": time_points,
         "exe_type": ["unilateral_squat", "bilateral_squat", "lateral_launch_all", "stork_stance_all", "step_down_all", "front_lunge_all"],
         "UID_list": list(range(len(uid_list)))

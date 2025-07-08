@@ -77,13 +77,13 @@
 
       <!-- Dropdown for chart 1 -->
       <div>
-          <label for="dropdown1">Select ...:</label>
-          <select id="dropdown1"></select>
+          <label for="dropdownTimeCohort">Select time for the cohort:</label>
+          <select id="dropdownTimeCohort"></select>
       </div>
 
       <!-- Dropdown for chart 1 -->
       <div>
-          <label for="dropdownTime">Select Time:</label>
+          <label for="dropdownTime">Select time for the test subject:</label>
           <select id="dropdownTime"></select>
       </div>
 
@@ -135,20 +135,20 @@
   </footer>
 
   <script>
-const dropdown1 = document.getElementById("dropdown1");
+const dropdownTimeCohort = document.getElementById("dropdownTimeCohort");
 const dropdownTime = document.getElementById("dropdownTime");
 const dropdownEXE = document.getElementById("dropdownEXE");
 const dropdownUID = document.getElementById("dropdownUID");
 
 // Function to fetch data and update charts
 function updateCharts() {
-  const option1 = dropdown1.value;
+  const option1 = dropdownTimeCohort.value;
   const Time = dropdownTime.value;
   const exeType = dropdownEXE.value;
   const uid = dropdownUID.value; // Get the selected UID
 
   // Build the query string dynamically
-  const queryString = `?option1=${encodeURIComponent(option1)}&optionTime=${encodeURIComponent(Time)}&EXE=${encodeURIComponent(exeType)}&uid=${encodeURIComponent(uid)}`;
+  const queryString = `?dropdownTimeCohort=${encodeURIComponent(option1)}&optionTime=${encodeURIComponent(Time)}&EXE=${encodeURIComponent(exeType)}&uid=${encodeURIComponent(uid)}`;
 
   // Fetch data with the selected options
   fetch("/get_chart_data" + queryString)
@@ -165,23 +165,21 @@ function updateCharts() {
 fetch("/get_chart_data?option1=Option+1&option2=Option+2&time=9%20Month")
   .then(resp => resp.json())
   .then(data => {
-    // Populate dropdown1
-    data.options.forEach(opt => {
-      const optionEl1 = document.createElement("option");
-      optionEl1.value = opt;
-      optionEl1.textContent = opt;
-      dropdown1.appendChild(optionEl1);
-    });
-
-    // Populate dropdown2 with timePoints
+    // Populate BOTH dropdown1 and dropdown2 with timePoints
     data.timePoints.forEach(timePoint => {
+      const optionEl1 = document.createElement("option");
+      optionEl1.value = timePoint;
+      optionEl1.textContent = timePoint;
+      dropdownTimeCohort.appendChild(optionEl1);
+
       const optionEl2 = document.createElement("option");
       optionEl2.value = timePoint;
       optionEl2.textContent = timePoint;
       dropdownTime.appendChild(optionEl2); 
+
     });
 
-    // Populate EXE dropdown
+      // Populate EXE dropdown
     data.exe_type.forEach(exe => {
       const optionEXE = document.createElement("option");
       optionEXE.value = exe;
@@ -198,7 +196,7 @@ fetch("/get_chart_data?option1=Option+1&option2=Option+2&time=9%20Month")
     });
 
     // Set default values for dropdowns
-    dropdown1.value = "Option 1";
+    dropdown1.value = "6 Month";
     dropdownTime.value = "6 Month"; // Default to the first timePoint
     dropdownEXE.value = "unilateral_squat";
     dropdownUID.value = data.UID_list[0];
@@ -209,7 +207,7 @@ fetch("/get_chart_data?option1=Option+1&option2=Option+2&time=9%20Month")
   .catch(err => console.error(err));
 
 // Add event listeners to update charts when dropdowns change
-dropdown1.addEventListener("change", updateCharts);
+dropdownTimeCohort.addEventListener("change", updateCharts);
 dropdownTime.addEventListener("change", updateCharts);
 dropdownEXE.addEventListener("change", updateCharts);
 dropdownUID.addEventListener("change", updateCharts);
