@@ -102,6 +102,7 @@
       <!-- Chart divs -->
       <div id="charts-container">
           <div id="chart1" class="chart"></div>
+          <div id="chart2" class="chart"></div>
       </div>
     </div>
 
@@ -131,7 +132,7 @@
 
   <!-- Page‐level footer always visible -->
   <footer class="page-footer">
-    © 2025 ACL visualization v. 1.0.3
+    © 2025 ACL visualization v. 1.0.2
   </footer>
 
   <script>
@@ -202,7 +203,8 @@ fetch("/get_chart_data?option1=Option+1&option2=Option+2&time=9%20Month")
     dropdownUID.value = data.UID_list[0];
 
     // Render the initial charts
-    updateCharts();
+    Plotly.newPlot('chart1', data.chart1.traces, data.chart1.layout);
+    Plotly.newPlot('chart2', data.chart2.traces, data.chart2.layout);
   })
   .catch(err => console.error(err));
 
