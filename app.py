@@ -122,6 +122,24 @@ def login_required(f):
     return decorated_function
 #------------------------------------------------------------------------
 
+def percent_diff(a, b):
+    """
+    Calculate the percentage difference between two values.
+    Returns a string formatted as a percentage with 2 decimal places.
+    """
+    if a == 0 and b == 0:
+        return 0.0
+    elif a == 0 or b == 0:
+        return 100.0
+    else:
+        diff = abs(a - b)
+        avg = (a + b) / 2
+        percent_diff = (diff / avg) * 100
+        return round(percent_diff, 1)
+    
+
+
+
 script_dir = os.path.dirname(__file__)
 pkl_path = os.path.join(script_dir, 'all_my_data.pkl')
 
@@ -268,6 +286,9 @@ def func_plot(uid,
 
         single_uid['Right'].append(right_values[0] if right_values else None)
         single_uid['Left'].append(left_values[0] if left_values else None)
+
+
+    print(f"[DEBUG] single_uid raw values plot_1: {single_uid}")
     
     uid_inj_list = list(y_temp[y_temp['uid'] == uid][injure])
     uid_inj = uid_inj_list[0] if uid_inj_list else 'NO RECORDS'
@@ -280,6 +301,7 @@ def func_plot(uid,
         # vals: e.g. [15, 80, 40, 7, 150, 25]
         norm = []
         for v, (lo, hi, ch_name) in zip(vals, ranges):
+            # Normalize by the range of the uninjured side
             if 'alignment' in ch_name:
                 norm.append(1 - ((v - lo) / (hi - lo)))
             else:
@@ -420,11 +442,11 @@ def func_plot(uid,
         "height": height,
         "showlegend": True,
         "showticklabels": False,
-        "title": f"Exe. type: {type_of_test}, subject: {time_subject}, cohort: {time_cohort}, Injured side: {uid_inj}"
+        "title": f"Exe. type: {type_of_test}, subject: {time_subject}, Injured side: {uid_inj}"
     }
     return {"traces": traces, "layout": layout}
 
-def func_plot_2(uid,
+def func_plot_2(uid,    
                 time_subject, 
                 time_cohort, 
                 temp_ch_list,
@@ -479,8 +501,9 @@ def func_plot_2(uid,
         aaa.sort()
     
         ranges.append([*aaa, k])  # k is the channel name (axis)
-    #print(ranges)
-    
+
+    print(f"[DEBUG] axis range values plot_2: {ranges}")
+
     median_good = []
     for k in all_info:
         median_good.append(all_info[k]['good']['median'])
@@ -530,6 +553,8 @@ def func_plot_2(uid,
         single_uid['Right'].append(right_values[0] if right_values else None)
         single_uid['Left'].append(left_values[0] if left_values else None)
     
+    print(f"[DEBUG] single_uid raw values plot_2: {single_uid}")
+
     uid_inj_list = list(y_temp[y_temp['uid'] == uid][injure])
     uid_inj = uid_inj_list[0] if uid_inj_list else 'NO RECORDS'
     
@@ -567,10 +592,9 @@ def func_plot_2(uid,
         norm_right = normed_data_uid['Right'][idx]
         norm_left = normed_data_uid['Left'][idx]
 
-        if right_val >= left_val:
-            abs_diff = abs(round((right_val - left_val) / right_val * 100, 2))
-        else:
-            abs_diff = abs(round((right_val - left_val) / left_val * 100, 2))
+
+        abs_diff = percent_diff(right_val, left_val)
+
 
         color = "red" if abs_diff > 10 else "green"
         if norm_right < 0.3:
@@ -586,7 +610,7 @@ def func_plot_2(uid,
             color_left = "orange"
         else:
             color_left = "green"
-        print(abs_diff, color)
+#        print(abs_diff, color)
 
         # Format the axis name with additional information
         formatted_name = (
@@ -711,6 +735,264 @@ def func_plot_2(uid,
     }
     return {"traces": traces, "layout": layout}
 
+# plot function for all time periods
+def func_plot_3(uid,
+                time_subject, 
+                time_cohort, 
+                temp_ch_list,
+                type_of_test = 'unilateral_squat', 
+                ch_type = 'mobility',
+                width=500, 
+                height=500):
+#-------- data preprocessing ----------------    
+
+    global uid_list
+    global time_points
+
+    time = '053-Time after Surgery'
+    gender = '005-Gender'
+    injure = 'injured_side'
+    global time_points 
+
+    # Initialize variables
+    single_uid = {'Right': [], 'Left': []}
+    normed_data_uid = {}
+    normed_data = {}
+    uid_inj = 'NO RECORDS'
+
+    #uid = uid_list[0]
+    #temp_ch_list = unilateral_squat_test_all
+    #time_v = '9 Month'
+    all_info = {}
+    for i in temp_ch_list:
+    
+        temp = i[0].split('__')
+        if 'pct' in i[0]:
+            axis = temp[2] + '__' + temp[3] + '_pct'
+        else:
+            axis = temp[2] + '__' + temp[3]
+    
+        # Define a dictionary with keys from time_points and empty lists as values
+        time_cohort_dict = {}
+        # Iterate through the time_points and filter the DataFrame for each time point
+        for tp in time_points:
+            y_temp_spider = df_test[[time, *i, injure]]
+            y_temp = y_temp_spider[y_temp_spider[time] == tp]
+
+            # Collect good and bad values
+            good_values = y_temp[y_temp[injure] == 'Left'][i[1]].values.tolist() + y_temp[y_temp[injure] == 'Right'][i[0]].values.tolist()
+            good_values_ps = pd.Series(good_values)
+
+            bad_values = y_temp[y_temp[injure] == 'Left'][i[0]].values.tolist() + y_temp[y_temp[injure] == 'Right'][i[1]].values.tolist()
+            bad_values_ps = pd.Series(bad_values)
+            
+            # Update the dictionary with calculated statistics for the current time point
+            time_cohort_dict[tp] = {
+                'keys': i,
+                'bad': stat_calc(bad_values_ps, [0.02,0.98]),
+                'good': stat_calc(good_values_ps, [0.02,0.98])
+            }
+
+        # Nest the keys: first level is axis, next level is time, then statistics
+        all_info[axis] = time_cohort_dict
+
+    # Calculate statistics for all keys in time_cohort_dict
+
+    # Calculate range for all channels in all_info
+    ranges = {}
+    # Calculate range for all channels using all time periods
+    for k in all_info:
+        # For each channel, collect min and max from bad_stats only across all time periods
+        min_vals = []
+        max_vals = []
+        for tp in time_points:
+            try:
+                stats = all_info[k][tp]
+                bad_stats = stats['bad']
+                good_stats = stats['good']
+                min_vals.append(bad_stats['min'])
+                max_vals.append(bad_stats['max'])
+            except KeyError:
+                continue
+
+        lo = min(min_vals)
+        hi = max(max_vals)
+        ranges[k] = [lo, hi]
+
+    print(f"[DEBUG] axis range values plot_3: {ranges}")
+    #categories = [k for k in all_info]
+#    range_abs = [min([r[0] for r in ranges]), max([r[1] for r in ranges])]
+
+        #--------------------------------- single UID -------------------------
+    
+    
+    single_uid = {'Right':[], 'Left':[] }
+    for ch in temp_ch_list:
+        y_temp_spider = df_test[[time, *ch, injure, 'uid']]
+        y_temp = y_temp_spider[y_temp_spider[time] == time_subject]
+        
+        # Debugging output to log the state of variables
+#        print("Processing channel:", ch)
+#        print("Filtered DataFrame for time_v:", y_temp)
+ #       print("UID being processed:", uid)
+
+        # Safely access the first element of the list, or assign a default value if the list is empty
+        right_values = list(y_temp[y_temp['uid'] == uid][ch[1]])
+        if not right_values:
+            right_values = [0]
+        left_values = list(y_temp[y_temp['uid'] == uid][ch[0]])
+        if not left_values:
+            left_values = [0]
+
+#        print("Right values:", right_values)
+#        print("Left values:", left_values)
+
+        single_uid['Right'].append(right_values[0] if right_values else None)
+        single_uid['Left'].append(left_values[0] if left_values else None)
+    
+    print(f"[DEBUG] single_uid raw values plot_3: {single_uid}")
+
+    uid_inj_list = list(y_temp[y_temp['uid'] == uid][injure])
+    uid_inj = uid_inj_list[0] if uid_inj_list else 'NO RECORDS'
+    
+    # build an ordered list of axes and corresponding ranges
+    ordered_axes = list(all_info.keys())
+    ordered_ranges = [ranges[axis] for axis in ordered_axes]
+    
+    normed_data_uid = {}
+#    print(label)
+
+    def get_normalized_median_bad(all_info, ranges, time_points):
+        """
+        Calculate normalized median 'bad' values for all channels and all time periods in all_info.
+        Returns a dict: {channel: {time_point: normalized_median_bad}}
+        """
+        normalized_medians = {}
+        for axis in all_info:
+            normalized_medians[axis] = {}
+            for tp in time_points:
+                try:
+                    median_bad = all_info[axis][tp]['bad']['median']
+                    lo, hi = ranges[axis]
+                    # Avoid division by zero
+                    if hi != lo:
+                        norm_val = (median_bad - lo) / (hi - lo)
+                    else:
+                        norm_val = 0.0
+                    normalized_medians[axis][tp] = norm_val
+                except Exception:
+                    normalized_medians[axis][tp] = None
+        return normalized_medians
+    
+    all_bad_norms = get_normalized_median_bad(all_info, ranges, time_points)
+    
+    for label, vals in single_uid.items():
+        # vals: e.g. [15, 80, 40, 7, 150, 25]
+        norm = []
+        for v, (lo, hi), ch_name in zip(vals, ordered_ranges, ordered_axes):
+            # Normalize by the range of the uninjured side
+            if 'alignment' in ch_name:
+                norm.append(1 - ((v - lo) / (hi - lo)))
+            else:
+                norm.append((v - lo) / (hi - lo))
+        normed_data_uid[label] = norm
+    # close the loop for each UID trace so the radar line connects back
+    for label in normed_data_uid:
+        normed_data_uid[label].append(normed_data_uid[label][0])
+
+    #categories = [k for k in all_info]
+    categories = ordered_axes
+
+    
+     
+    # Prepare theta (angles) and extend categories to close the loop
+    theta = categories + [categories[0]]
+
+#--------------------------------------------------------------------    
+
+#    categories = categories + [categories[0]]
+    traces = []
+
+    if uid_inj == 'Right':
+        norm_vals = normed_data_uid['Right']
+        label = 'Right'
+    else:
+        norm_vals = normed_data_uid['Left']
+        label = 'Left'
+
+
+#        text_vals = [str(v) for v in single_uid[label]] + [str(single_uid[label][0])]
+    trace = {
+            "type": "scatterpolar",
+            "r": norm_vals,
+            "theta": theta,
+            "name": f"Test subject #{uid_list.index(uid)} {label}, side",
+#                "text": text_vals,
+            "textposition": "top center"
+    }
+    traces.append(trace)   
+    period_colors = {
+        "3 Month":  "rgba(255, 0, 0, 0.8)",      # red
+        "6 Month":  "rgba(255, 165, 0, 0.8)",    # orange
+        "9 Month":  "rgba(255, 255, 0, 0.8)",    # yellow
+        "12 Month": "rgba(0, 128, 0, 0.8)",      # green
+    }
+
+    # Set test subject trace color to black
+    traces[0]["line"] = {"color": "black", "width": 3}
+    # Build exactly 4 traces: one per time period, across all axes
+    for tp in time_points:
+        series = []
+        for axis in ordered_axes:
+            val = all_bad_norms.get(axis, {}).get(tp)
+            # clamp to [0, 1] so axis min can safely be 0.0
+            v = 0.0 if val is None else float(val)
+            series.append(min(1.0, max(0.0, v)))
+        # close the loop
+        r_vals = series + [series[0]]
+        traces.append({
+            "type": "scatterpolar",
+            "r": r_vals,
+            "theta": theta,
+            "mode": "lines",
+            "name": f"Median bad ({tp})",
+            "legendgroup": f"median-{tp}",
+            "showlegend": True,
+            "line": {"color": period_colors.get(tp, "rgba(0,0,0,0.6)"), "width": 2}
+        })
+
+    # --- Auto-zoom top; force radial axis minimum to 0.0 ---
+    r_max = 0.0
+    for t in traces:
+        for rv in t.get("r", []):
+            try:
+                v = float(rv)
+            except (TypeError, ValueError):
+                continue
+            if pd.notna(v):
+                r_max = max(r_max, v)
+    # fallback and padding
+    if r_max <= 0.0:
+        r_max = 1.0
+    else:
+        r_max = min(1.0, r_max + 0.05 * r_max)  # small headroom
+
+    layout = {
+        "polar": {
+            "radialaxis": {
+                "visible": True,
+                "autorange": False,
+                "range": [0.0, r_max]  # min fixed at 0.0
+            }
+        },
+        "width": width,
+        "height": height,
+        "showlegend": True,
+        "showticklabels": False,
+        "title": f"Exe. type: {type_of_test}, subject: {time_subject}, Injured side: {uid_inj}"
+    }
+    return {"traces": traces, "layout": layout}
+
 @app.route("/")
 @login_required
 def home():
@@ -758,7 +1040,7 @@ def get_chart_data():
     if cache_key in chart_cache:
         chart_data = chart_cache[cache_key]
     else:
-        chart_data = func_plot(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700)
+        chart_data = func_plot_3(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700)
         chart_cache[cache_key] = chart_data
 
     # For chart2, call func_plot_2 (can be customized later)
