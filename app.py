@@ -110,7 +110,12 @@ def stat_calc(data_ps, filter = [0.01, 0.99]):
     max_1 = filtered.max()
     
     min_1 = filtered.min()
-    return {'max': max_1, 'median': median_1, 'min': min_1}
+    
+    # Calculate quartiles for confidence interval
+    q25 = filtered.quantile(0.25)
+    q75 = filtered.quantile(0.75)
+    
+    return {'max': max_1, 'median': median_1, 'min': min_1, 'q25': q25, 'q75': q75}
 
 #-------------------------- Flask app setup ----------------------------
 def login_required(f):
@@ -136,6 +141,253 @@ def percent_diff(a, b):
         avg = (a + b) / 2
         percent_diff = (diff / avg) * 100
         return round(percent_diff, 1)
+
+def create_bar_chart_from_polar(polar_traces, categories, single_uid, normed_data_uid, uid, uid_list, time_subject, type_of_test, uid_inj, width, height, display_mode='absolute', all_info=None):
+    """
+    Convert polar/radar chart data to a grouped bar chart format.
+    Shows normalized values for each metric comparing Right vs Left sides.
+    """
+    # Categories should already be clean (no duplicate), but double-check
+    if len(categories) > 0 and categories[-1] == categories[0]:
+        clean_categories = categories[:-1]
+    else:
+        clean_categories = categories
+    
+    # Extract the base metric names (without the HTML formatting and values)
+    metric_names = []
+    for cat in clean_categories:
+        # Extract just the metric name before <br>
+        base_name = cat.split('<br>')[0] if '<br>' in cat else cat
+        metric_names.append(base_name)
+    
+    # Get normalized values - normed_data_uid has been extended with duplicate, so remove it
+    right_values = normed_data_uid.get('Right', [])
+    left_values = normed_data_uid.get('Left', [])
+    
+    # Debug: print lengths
+    print(f"[DEBUG BAR_CHART] Categories: {len(metric_names)}, Right: {len(right_values)}, Left: {len(left_values)}")
+    
+    # Remove closing duplicate if present
+    if len(right_values) > len(metric_names):
+        right_values = right_values[:-1]
+    if len(left_values) > len(metric_names):
+        left_values = left_values[:-1]
+    
+    print(f"[DEBUG BAR_CHART] After trim - Right: {len(right_values)}, Left: {len(left_values)}")
+    print(f"[DEBUG BAR_CHART] Right values: {right_values}")
+    print(f"[DEBUG BAR_CHART] Left values: {left_values}")
+    
+    # Prepare text annotations based on display mode
+    right_text = []
+    left_text = []
+    
+    if all_info is not None:
+        for idx, k in enumerate(all_info.keys()):
+            # Get absolute values
+            right_val = round(single_uid['Right'][idx], 2)
+            left_val = round(single_uid['Left'][idx], 2)
+            
+            if display_mode == 'zscore':
+                # Calculate z-score with 0 at minimum value
+                lo = all_info[k]['good']['min']
+                hi = all_info[k]['good']['max']
+                median_val = all_info[k]['good']['median']
+                std_dev = (hi - lo) / 4 if (hi - lo) != 0 else 1
+                z_right = round((right_val - lo) / std_dev, 2)
+                z_left = round((left_val - lo) / std_dev, 2)
+                right_text.append(f"{z_right}")
+                left_text.append(f"{z_left}")
+            else:  # absolute mode
+                right_text.append(f"{right_val}")
+                left_text.append(f"{left_val}")
+    else:
+        # Fallback: show normalized values
+        right_text = [f"{round(v, 2)}" for v in right_values]
+        left_text = [f"{round(v, 2)}" for v in left_values]
+    
+    # Determine colors based on injured side
+    if uid_inj == 'Right':
+        right_color = "red"
+        left_color = "lightblue"
+        right_label = "Right Side (Injured)"
+        left_label = "Left Side"
+    elif uid_inj == 'Left':
+        right_color = "lightblue"
+        left_color = "red"
+        right_label = "Right Side"
+        left_label = "Left Side (Injured)"
+    else:
+        right_color = "lightblue"
+        left_color = "lightcoral"
+        right_label = "Right Side"
+        left_label = "Left Side"
+    
+    # Create bar chart traces with text annotations
+    traces = [
+        {
+            "type": "bar",
+            "x": metric_names,
+            "y": right_values,
+            "name": right_label,
+            "marker": {"color": right_color},
+            "text": right_text,
+            "textposition": "outside",
+            "textfont": {"size": 10}
+        },
+        {
+            "type": "bar",
+            "x": metric_names,
+            "y": left_values,
+            "name": left_label,
+            "marker": {"color": left_color},
+            "text": left_text,
+            "textposition": "outside",
+            "textfont": {"size": 10}
+        }
+    ]
+    
+    layout = {
+        "barmode": "group",
+        "width": width,
+        "height": height,
+        "title": f"Bar Chart: {type_of_test} - Subject #{uid_list.index(uid)} at {time_subject}",
+        "xaxis": {
+            "title": "Metrics",
+            "tickangle": -45
+        },
+        "yaxis": {
+            "title": "Normalized Value (0-1)",
+            "range": [0, 1.1]
+        },
+        "margin": {
+            "b": 150
+        },
+        "showlegend": True,
+        "shapes": [
+            # Red zone (0.0 - 0.3)
+            {
+                "type": "rect",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0,
+                "y0": 0.0,
+                "x1": 1,
+                "y1": 0.3,
+                "fillcolor": "rgba(255, 0, 0, 0.2)",
+                "line": {"width": 0},
+                "layer": "below"
+            },
+            # Yellow zone (0.3 - 0.6)
+            {
+                "type": "rect",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0,
+                "y0": 0.3,
+                "x1": 1,
+                "y1": 0.6,
+                "fillcolor": "rgba(255, 255, 0, 0.2)",
+                "line": {"width": 0},
+                "layer": "below"
+            },
+            # Green zone (0.6 - 1.0)
+            {
+                "type": "rect",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0,
+                "y0": 0.6,
+                "x1": 1,
+                "y1": 1.0,
+                "fillcolor": "rgba(0, 255, 0, 0.2)",
+                "line": {"width": 0},
+                "layer": "below"
+            }
+        ]
+    }
+    
+    return {"traces": traces, "layout": layout}
+
+def create_bar_chart_from_polar_multi_time(polar_traces, all_times, single_uid, normed_data_uid, uid, uid_list, time_subject, type_of_test, uid_inj, width, height):
+    """
+    Convert polar/radar chart data with multiple timepoints to a grouped bar chart format.
+    Shows normalized values for each metric across different time periods.
+    """
+    # Extract metric names and data from the polar traces
+    metric_names = []
+    time_data = {}  # {time_period: [values]}
+    
+    # Parse traces to extract data
+    for trace in polar_traces:
+        if 'theta' in trace and 'r' in trace:
+            trace_name = trace.get('name', '')
+            
+            # Skip fill traces and non-data traces
+            if 'fill' in trace or 'showlegend' in trace and not trace['showlegend']:
+                continue
+            
+            # Extract time period from trace name (e.g., "Injured Side - 3 Month")
+            if ' - ' in trace_name:
+                parts = trace_name.split(' - ')
+                if len(parts) >= 2:
+                    time_period = parts[-1]
+                    
+                    # Get theta values (metric names) - remove duplicates
+                    theta_values = trace['theta']
+                    r_values = trace['r']
+                    
+                    # Remove closing duplicate if present
+                    if len(theta_values) > 0 and theta_values[0] == theta_values[-1]:
+                        theta_values = theta_values[:-1]
+                        r_values = r_values[:-1]
+                    
+                    # Store data
+                    if not metric_names and theta_values:
+                        metric_names = [t.split('<br>')[0] if '<br>' in t else t for t in theta_values]
+                    
+                    time_data[time_period] = r_values
+    
+    # If we couldn't extract from traces, use the single_uid data
+    if not metric_names and single_uid:
+        metric_names = list(range(len(single_uid.get('Right', []))))
+    
+    # Create bar chart traces for each time period
+    traces = []
+    colors = {
+        '3 Month': 'lightblue',
+        '6 Month': 'lightgreen', 
+        '9 Month': 'lightsalmon',
+        '12 Month': 'lightpink'
+    }
+    
+    for time_period, values in time_data.items():
+        trace = {
+            "type": "bar",
+            "x": metric_names,
+            "y": values,
+            "name": time_period,
+            "marker": {"color": colors.get(time_period, "gray")}
+        }
+        traces.append(trace)
+    
+    layout = {
+        "barmode": "group",
+        "width": width,
+        "height": height,
+        "title": f"Bar Chart: {type_of_test} - Subject #{uid_list.index(uid)} - Injured Side Progress",
+        "xaxis": {
+            "title": "Metrics",
+            "tickangle": -45
+        },
+        "yaxis": {
+            "title": "Normalized Value",
+            "range": [0, 1.1]
+        },
+        "showlegend": True
+    }
+    
+    return {"traces": traces, "layout": layout}
+
     
 
 
@@ -336,6 +588,9 @@ def func_plot(uid,
     
     #
     
+    # Save original categories before closing the loop for bar chart
+    original_categories = categories.copy()
+    
     # Prepare theta (angles) and extend categories to close the loop
     theta = categories + [categories[0]]
 
@@ -444,7 +699,11 @@ def func_plot(uid,
         "showticklabels": False,
         "title": f"Exe. type: {type_of_test}, subject: {time_subject}, Injured side: {uid_inj}"
     }
-    return {"traces": traces, "layout": layout}
+    
+    # Create bar chart version with the same data
+    bar_chart = create_bar_chart_from_polar(traces, original_categories, single_uid, normed_data_uid, uid, uid_list, time_subject, type_of_test, uid_inj, width, height, display_mode='absolute', all_info=all_info)
+    
+    return {"traces": traces, "layout": layout, "bar_chart": bar_chart}
 
 def func_plot_2(uid,    
                 time_subject, 
@@ -453,7 +712,8 @@ def func_plot_2(uid,
                 type_of_test = 'unilateral_squat', 
                 ch_type = 'mobility',
                 width=500, 
-                height=500):
+                height=500,
+                display_mode='absolute'):
 #-------- data preprocessing ----------------    
 
     global uid_list
@@ -587,6 +847,13 @@ def func_plot_2(uid,
         # Extract the range (lo, hi) for the current axis
         lo = all_info[k]['good']['min']
         hi = all_info[k]['good']['max']
+        median_val = all_info[k]['good']['median']
+        
+        # Calculate z-score with 0 at minimum value: (value - min) / std_dev
+        # Approximate std_dev using range: (max - min) / 4 (rough estimate)
+        std_dev = (hi - lo) / 4 if (hi - lo) != 0 else 1
+        z_right = round((right_val - lo) / std_dev, 2)
+        z_left = round((left_val - lo) / std_dev, 2)
 
         # Calculate the percentile for right_val and left_val
         norm_right = normed_data_uid['Right'][idx]
@@ -612,13 +879,21 @@ def func_plot_2(uid,
             color_left = "green"
 #        print(abs_diff, color)
 
-        # Format the axis name with additional information
-        formatted_name = (
-                        f"{k}<br>"
-                        f"<span style='color:{color_right};'>R: {right_val}</span>, "
-                        f"<span style='color:{color_left};'>L: {left_val}</span>, "
-                        f"<span style='color:{color};'>Δ: {abs_diff}%</span>"
-                        )
+        # Format the axis name with additional information based on display mode
+        if display_mode == 'zscore':
+            formatted_name = (
+                            f"{k}<br>"
+                            f"<span style='color:{color_right};'>R: {z_right}</span>, "
+                            f"<span style='color:{color_left};'>L: {z_left}</span>, "
+                            f"<span style='color:{color};'>Δ: {abs_diff}%</span>"
+                            )
+        else:  # absolute mode
+            formatted_name = (
+                            f"{k}<br>"
+                            f"<span style='color:{color_right};'>R: {right_val}</span>, "
+                            f"<span style='color:{color_left};'>L: {left_val}</span>, "
+                            f"<span style='color:{color};'>Δ: {abs_diff}%</span>"
+                            )
         categories.append(formatted_name)
     
     #ranges = range
@@ -643,6 +918,9 @@ def func_plot_2(uid,
     
     #
     
+    # Save original categories before closing the loop for bar chart
+    original_categories = categories.copy()
+    
     # Prepare theta (angles) and extend categories to close the loop
     theta = categories + [categories[0]]
 
@@ -650,6 +928,36 @@ def func_plot_2(uid,
 
     categories = categories + [categories[0]]
     traces = []
+
+    # Add colored lines between left and right points on each axis
+    # Use the formatted category names (without the duplicate closing element)
+    formatted_categories = categories[:-1]  # Remove the duplicate closing element
+    
+    for idx in range(len(formatted_categories)):
+        right_val_norm = normed_data_uid['Right'][idx]
+        left_val_norm = normed_data_uid['Left'][idx]
+        
+        right_val = single_uid['Right'][idx]
+        left_val = single_uid['Left'][idx]
+        abs_diff = percent_diff(right_val, left_val)
+        
+        # Choose color based on difference
+        line_color = "red" if abs_diff > 10 else "green"
+        line_width = 4
+        
+        # Create a line segment between the two points on this axis
+        traces.append({
+            "type": "scatterpolar",
+            "r": [right_val_norm, left_val_norm],
+            "theta": [formatted_categories[idx], formatted_categories[idx]],
+            "mode": "lines",
+            "line": {
+                "color": line_color,
+                "width": line_width
+            },
+            "showlegend": False,
+            "hoverinfo": "skip"
+        })
 
     for label, norm_vals in normed_data_uid.items():
         # Marker colors based on normalized value
@@ -733,7 +1041,11 @@ def func_plot_2(uid,
         "showticklabels": False,
         "title": f"Exe. type: {type_of_test}, subject: {time_subject}, cohort: {time_cohort}, Injured side: {uid_inj}"
     }
-    return {"traces": traces, "layout": layout}
+    
+    # Create bar chart version with the same data
+    bar_chart = create_bar_chart_from_polar(traces, original_categories, single_uid, normed_data_uid, uid, uid_list, time_subject, type_of_test, uid_inj, width, height, display_mode=display_mode, all_info=all_info)
+    
+    return {"traces": traces, "layout": layout, "bar_chart": bar_chart}
 
 # plot function for all time periods
 def func_plot_3(uid,
@@ -991,7 +1303,105 @@ def func_plot_3(uid,
         "showticklabels": False,
         "title": f"Exe. type: {type_of_test}, subject: {time_subject}, Injured side: {uid_inj}"
     }
-    return {"traces": traces, "layout": layout}
+    
+    # Create bar chart version with the same data - show progress across time periods
+    bar_traces = []
+    
+    # Add test subject's injured side values first
+    if uid_inj == 'Right':
+        subject_values = normed_data_uid['Right'][:-1]  # Remove closing duplicate
+        side_label = 'Right (Injured)'
+    else:
+        subject_values = normed_data_uid['Left'][:-1]  # Remove closing duplicate
+        side_label = 'Left (Injured)'
+    
+    bar_traces.append({
+        "type": "bar",
+        "x": ordered_axes,
+        "y": subject_values,
+        "name": f"Subject #{uid_list.index(uid)} - {side_label}",
+        "marker": {"color": "black"}
+    })
+    
+    # Add cohort median bad values for each time period
+    for tp in time_points:
+        series = []
+        for axis in ordered_axes:
+            val = all_bad_norms.get(axis, {}).get(tp)
+            v = 0.0 if val is None else float(val)
+            series.append(min(1.0, max(0.0, v)))
+        
+        bar_traces.append({
+            "type": "bar",
+            "x": ordered_axes,
+            "y": series,
+            "name": f"Cohort Median ({tp})",
+            "marker": {"color": period_colors.get(tp, "gray")}
+        })
+    
+    bar_layout = {
+        "barmode": "group",
+        "width": width,
+        "height": height,
+        "title": f"Bar Chart: {type_of_test} - Subject vs Cohort Progress",
+        "xaxis": {
+            "title": "Metrics",
+            "tickangle": -45
+        },
+        "yaxis": {
+            "title": "Normalized Value",
+            "range": [0, 1.1]
+        },
+        "margin": {
+            "b": 150
+        },
+        "showlegend": True,
+        "shapes": [
+            # Red zone (0.0 - 0.3)
+            {
+                "type": "rect",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0,
+                "y0": 0.0,
+                "x1": 1,
+                "y1": 0.3,
+                "fillcolor": "rgba(255, 0, 0, 0.3)",
+                "line": {"width": 0},
+                "layer": "below"
+            },
+            # Yellow zone (0.3 - 0.6)
+            {
+                "type": "rect",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0,
+                "y0": 0.3,
+                "x1": 1,
+                "y1": 0.6,
+                "fillcolor": "rgba(255, 255, 0, 0.3)",
+                "line": {"width": 0},
+                "layer": "below"
+            },
+            # Green zone (0.6 - 1.0)
+            {
+                "type": "rect",
+                "xref": "paper",
+                "yref": "y",
+                "x0": 0,
+                "y0": 0.6,
+                "x1": 1,
+                "y1": 1.0,
+                "fillcolor": "rgba(0, 255, 0, 0.3)",
+                "line": {"width": 0},
+                "layer": "below"
+            }
+        ]
+    }
+    
+    bar_chart = {"traces": bar_traces, "layout": bar_layout}
+    
+    return {"traces": traces, "layout": layout, "bar_chart": bar_chart}
 
 @app.route("/")
 @login_required
@@ -1036,15 +1446,26 @@ def get_chart_data():
     elif exe_type == 'front_lunge_all':
         temp_ch_list = front_lunge_all
 
-    cache_key = (uid, time_subject, time_cohort, exe_type)
-    if cache_key in chart_cache:
-        chart_data = chart_cache[cache_key]
-    else:
-        chart_data = func_plot_3(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700)
-        chart_cache[cache_key] = chart_data
+    display_mode = request.args.get("displayMode", "absolute")
+    
+    # Don't use cache for now to ensure fresh data with bar_chart
+    # cache_key = (uid, time_subject, time_cohort, exe_type)
+    # if cache_key in chart_cache:
+    #     chart_data = chart_cache[cache_key]
+    # else:
+    #     chart_data = func_plot_3(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700)
+    #     chart_cache[cache_key] = chart_data
+    
+    # Generate fresh data with bar charts
+    chart_data = func_plot_3(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700)
 
-    # For chart2, call func_plot_2 (can be customized later)
-    chart_data_2 = func_plot_2(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700)
+    # For chart2, call func_plot_2 with display_mode parameter
+    chart_data_2 = func_plot_2(uid, time_subject, time_cohort, temp_ch_list, exe_type, width=700, height=700, display_mode=display_mode)
+    
+    print(f"[DEBUG API] chart1 keys: {chart_data.keys()}")
+    print(f"[DEBUG API] chart2 keys: {chart_data_2.keys()}")
+    print(f"[DEBUG API] chart1 has bar_chart: {'bar_chart' in chart_data}")
+    print(f"[DEBUG API] chart2 has bar_chart: {'bar_chart' in chart_data_2}")
 
     return jsonify({
         "chart1": chart_data,

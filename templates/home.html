@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>Home</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <style>
         html, body {
           height: 100%;
@@ -68,6 +68,18 @@
         .chart {
             width: 45%;
         }
+        
+        /* Bar charts container */
+        #bar-charts-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ccc;
+        }
+        .bar-chart {
+            width: 45%;
+        }
     </style>
 </head>
 <body>
@@ -99,10 +111,25 @@
           <select id="dropdownUID"></select>
       </div>
 
+      <!-- 4th Dropdown for Display Mode -->
+      <div>
+          <label for="dropdownDisplayMode">Chart 2 Display Mode:</label>
+          <select id="dropdownDisplayMode">
+              <option value="absolute">Absolute Values</option>
+              <option value="zscore">Z-Score</option>
+          </select>
+      </div>
+
       <!-- Chart divs -->
       <div id="charts-container">
           <div id="chart1" class="chart"></div>
           <div id="chart2" class="chart"></div>
+      </div>
+      
+      <!-- Bar Chart divs -->
+      <div id="bar-charts-container">
+          <div id="bar-chart1" class="bar-chart"></div>
+          <div id="bar-chart2" class="bar-chart"></div>
       </div>
     </div>
 
@@ -113,7 +140,12 @@
           This dashboard shows mobility and alignment metrics over time. 
           Select a test type and time point to update the charts.
         </p>
-        <h2>Data Preprocessing</h2>
+        <h3>Chart Types</h3>
+        <ul>
+          <li><strong>Spider/Radar Charts (Top):</strong> Show multi-dimensional comparison across all metrics at once</li>
+          <li><strong>Bar Charts (Bottom):</strong> Alternative view of the same data for easier metric-by-metric comparison</li>
+        </ul>
+        <h3>Data Preprocessing</h3>
         <ol>
           <li>Filter out values below the 5th and above the 95th percentile.</li>
           <li>Compute the 50th percentile (median) for visual representation.</li>
@@ -140,6 +172,7 @@ const dropdownTimeCohort = document.getElementById("dropdownTimeCohort");
 const dropdownTime = document.getElementById("dropdownTime");
 const dropdownEXE = document.getElementById("dropdownEXE");
 const dropdownUID = document.getElementById("dropdownUID");
+const dropdownDisplayMode = document.getElementById("dropdownDisplayMode");
 
 // Function to fetch data and update charts
 function updateCharts() {
@@ -149,15 +182,34 @@ function updateCharts() {
   const uid = dropdownUID.value; // Get the selected UID
 
   // Build the query string dynamically
-  const queryString = `?dropdownTimeCohort=${encodeURIComponent(option1)}&optionTime=${encodeURIComponent(Time)}&EXE=${encodeURIComponent(exeType)}&uid=${encodeURIComponent(uid)}`;
+  const displayMode = dropdownDisplayMode.value;
+  const queryString = `?dropdownTimeCohort=${encodeURIComponent(option1)}&optionTime=${encodeURIComponent(Time)}&EXE=${encodeURIComponent(exeType)}&uid=${encodeURIComponent(uid)}&displayMode=${encodeURIComponent(displayMode)}`;
 
   // Fetch data with the selected options
   fetch("/get_chart_data" + queryString)
     .then(resp => resp.json())
     .then(data => {
+      console.log("[DEBUG] Received data:", data);
+      console.log("[DEBUG] chart1 has bar_chart:", data.chart1.bar_chart !== undefined);
+      console.log("[DEBUG] chart2 has bar_chart:", data.chart2.bar_chart !== undefined);
+      
       // Update the spider charts
       Plotly.newPlot("chart1", data.chart1.traces, data.chart1.layout);
       Plotly.newPlot("chart2", data.chart2.traces, data.chart2.layout);
+      
+      // Update the bar charts
+      if (data.chart1.bar_chart) {
+        console.log("[DEBUG] Plotting bar-chart1");
+        Plotly.newPlot("bar-chart1", data.chart1.bar_chart.traces, data.chart1.bar_chart.layout);
+      } else {
+        console.warn("[WARN] chart1.bar_chart is missing");
+      }
+      if (data.chart2.bar_chart) {
+        console.log("[DEBUG] Plotting bar-chart2");
+        Plotly.newPlot("bar-chart2", data.chart2.bar_chart.traces, data.chart2.bar_chart.layout);
+      } else {
+        console.warn("[WARN] chart2.bar_chart is missing");
+      }
     })
     .catch(err => console.error(err));
 }
@@ -197,14 +249,32 @@ fetch("/get_chart_data?option1=Option+1&option2=Option+2&time=9%20Month")
     });
 
     // Set default values for dropdowns
-    dropdown1.value = "6 Month";
+    dropdownTimeCohort.value = "6 Month";
     dropdownTime.value = "6 Month"; // Default to the first timePoint
     dropdownEXE.value = "unilateral_squat";
     dropdownUID.value = data.UID_list[0];
 
+    console.log("[DEBUG] Initial data:", data);
+    console.log("[DEBUG] chart1 has bar_chart:", data.chart1.bar_chart !== undefined);
+    console.log("[DEBUG] chart2 has bar_chart:", data.chart2.bar_chart !== undefined);
+
     // Render the initial charts
     Plotly.newPlot('chart1', data.chart1.traces, data.chart1.layout);
     Plotly.newPlot('chart2', data.chart2.traces, data.chart2.layout);
+    
+    // Render the initial bar charts
+    if (data.chart1.bar_chart) {
+      console.log("[DEBUG] Plotting initial bar-chart1");
+      Plotly.newPlot('bar-chart1', data.chart1.bar_chart.traces, data.chart1.bar_chart.layout);
+    } else {
+      console.warn("[WARN] Initial chart1.bar_chart is missing");
+    }
+    if (data.chart2.bar_chart) {
+      console.log("[DEBUG] Plotting initial bar-chart2");
+      Plotly.newPlot('bar-chart2', data.chart2.bar_chart.traces, data.chart2.bar_chart.layout);
+    } else {
+      console.warn("[WARN] Initial chart2.bar_chart is missing");
+    }
   })
   .catch(err => console.error(err));
 
@@ -213,6 +283,7 @@ dropdownTimeCohort.addEventListener("change", updateCharts);
 dropdownTime.addEventListener("change", updateCharts);
 dropdownEXE.addEventListener("change", updateCharts);
 dropdownUID.addEventListener("change", updateCharts);
+dropdownDisplayMode.addEventListener("change", updateCharts);
 </script>
 </body>
 </html>
